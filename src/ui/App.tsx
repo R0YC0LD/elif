@@ -72,7 +72,7 @@ export default function App() {
       })
     }
     if (!store.state.tutorialDone) patchUi({ tutorial: 0 })
-    if (r.offline && r.offline.seconds >= 60) patchUi({ offline: r.offline })
+    if (store.state.tutorialDone && r.offline && r.offline.seconds >= 60) patchUi({ offline: r.offline })
     setReady(true)
 
     const off = bus.on((e) => {
@@ -81,9 +81,8 @@ export default function App() {
         audio.play(e.name)
         buzz(e.name)
       }
-      else if (e.type === 'levelup') patchUi({ levelUp: { level: e.level, stage: null, unlocks: unlocksAt(e.level) } })
-      else if (e.type === 'stage' && ui.levelUp) patchUi({ levelUp: { ...ui.levelUp, stage: e.stage } })
-      else if (e.type === 'stage') patchUi({ levelUp: { level: store.state.level, stage: e.stage, unlocks: [] } })
+      else if (e.type === 'levelup') patchUi({ pending: { level: e.level, stage: null, unlocks: unlocksAt(e.level) } })
+      else if (e.type === 'stage') patchUi({ pending: { level: store.state.level, stage: e.stage, unlocks: ui.pending?.unlocks ?? [] } })
     })
 
     const unlock = () => {
@@ -134,6 +133,10 @@ export default function App() {
   }, [])
 
   const s = useGame()
+  const idle = !ui.game && !ui.panel && !ui.confirm && !ui.offline && ui.tutorial < 0
+  useEffect(() => {
+    if (idle && ui.pending && !ui.levelUp) patchUi({ levelUp: ui.pending, pending: null })
+  }, [idle, ui.pending, ui.levelUp])
   useEffect(() => {
     if (ready) audio.setTheme(ui.game ?? s.currentRoom)
   }, [ready, ui.game, s.currentRoom])

@@ -47,12 +47,14 @@ export function Hud() {
           {s.coins}
         </span>
       </span>
-      <span className="pill" title="Etkinlik puanı">
-        <Ep />
-        <span key={s.ep} className="bump">
-          {s.ep}
+      {s.epCycle && (
+        <span className="pill" title="Etkinlik puanı">
+          <Ep />
+          <span key={s.ep} className="bump">
+            {s.ep}
+          </span>
         </span>
-      </span>
+      )}
       <button className="iconbtn" onClick={() => openPanel('settings')} aria-label="Ayarlar">
         {Ico.gear}
       </button>
@@ -172,7 +174,7 @@ export function Stage() {
 
   return (
     <div className="stage-wrap">
-      <div className="stage">
+      <div className={`stage${su.decorOn ? ' contain' : ''}`}>
         <canvas ref={ref} aria-label={`${ROOMS[s.currentRoom].name}. ${s.pet.name} burada.`} role="img" />
         <div className="room-bar">
           <button className="arrow" onClick={() => go(-1)} aria-label="Önceki oda" disabled={unlocked.length < 2}>

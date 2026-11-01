@@ -1395,6 +1395,11 @@ input[type='range'] {
   object-fit: cover;
 }
 
+.stage.contain canvas {
+  object-fit: contain;
+  background: #101c1f;
+}
+
 @media (max-width: 899px) and (orientation: portrait) {
   .stage-wrap {
     place-items: start center;

@@ -16,8 +16,11 @@ import {
   petPet,
   placeItem,
   removeItem,
+  refreshQuests,
   scrubGain,
+  setSleep,
   stepNeeds,
+  syncEvent,
   useItem,
   type Taste,
 } from '../game/logic'
@@ -128,6 +131,7 @@ export class Scene {
   private giftIn = 18
   private bubble: { x: number; y: number; r: number; room: RoomId } | null = null
   private ambIn = 0
+  private hygieneStart = 0
 
   constructor() {
     this.loop = new GameLoop({ update: (dt) => this.update(dt), render: (_a, dt) => this.render(dt) })
@@ -254,7 +258,7 @@ export class Scene {
 
   toScene(clientX: number, clientY: number) {
     const r = this.canvas.getBoundingClientRect()
-    const k = Math.max(r.width / SCENE.w, r.height / SCENE.h)
+    const k = (sceneUi.decorOn ? Math.min : Math.max)(r.width / SCENE.w, r.height / SCENE.h)
     const ox = (r.width - SCENE.w * k) / 2
     const oy = (r.height - SCENE.h * k) / 2
     return { x: (clientX - r.left - ox) / k, y: (clientY - r.top - oy) / k }
@@ -397,6 +401,10 @@ export class Scene {
   }
 
   setBathTool(t: SceneUi['bathTool']) {
+    if (store.state.pet.asleep) {
+      toast('warn', store.state.pet.name + ' uyuyor.')
+      return
+    }
     const cur = sceneUi.bathTool
     const next = cur === t ? null : t
     patchSceneUi({ bathTool: next })
@@ -420,6 +428,11 @@ export class Scene {
     const c = this.petCenter()
     const k = len / 100
     if (tool === 'soap') {
+      if (!b.soaped && store.state.pet.needs.hygiene >= 92) {
+        if (sceneUi.bathHint !== 'Nova zaten tertemiz.') patchSceneUi({ bathHint: 'Nova zaten tertemiz.' })
+        return
+      }
+      if (!b.soaped) this.hygieneStart = store.state.pet.needs.hygiene
       b.foam = Math.min(1, b.foam + 0.45 * k)
       b.soaped = true
       b.rinsed = false
@@ -438,7 +451,7 @@ export class Scene {
         b.dry = Math.min(1, b.dry + 0.5 * k)
         b.wet = Math.max(0, b.wet - 0.3 * k)
         if (b.dry >= 1) {
-          act((s) => finishBath(s))
+          act((s) => finishBath(s, this.hygieneStart))
           this.anim.play('veryHappy')
           this.burst('star', 14)
           sound('achievement')
@@ -577,6 +590,14 @@ export class Scene {
   }
 
   private poke(y: number) {
+    if (store.state.pet.asleep) {
+      act((st) => {
+        setSleep(st, false)
+        st.pet.needs.comfort = Math.max(0, st.pet.needs.comfort - 6)
+      })
+      this.anim.play('surprised')
+      return
+    }
     const c = this.petCenter()
     const head = y < c.y - 6
     const s = store.state
@@ -856,6 +877,9 @@ export class Scene {
       this.lastRoom = s.currentRoom
       this.roomSwitch = 0.35
       this.runtime.clear()
+      this.ghost = null
+      this.moveGrab = null
+      if (sceneUi.selected || sceneUi.placing) patchSceneUi({ selected: null, placing: null })
       this.actorX = 360
       this.targetX = 360
       this.actorY = GROUND_Y
@@ -906,6 +930,8 @@ export class Scene {
     this.lastWall = now
     const total = Math.min(gap, 8 * 3600)
     store.quiet((s) => {
+      syncEvent(s)
+      refreshQuests(s)
       let left = total
       while (left > 0) {
         const d = Math.min(30, left)

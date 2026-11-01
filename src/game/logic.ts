@@ -111,6 +111,7 @@ export function newGame(name = 'Nova', now = Date.now()): GameState {
     },
     coins: 150,
     ep: 0,
+    epCycle: '',
     xp: 0,
     level: 1,
     inventory: { apple: 3, water: 3, bandage: 1, toy_ball: 1, wp_cream: 1, fl_oak: 1, fl_grass: 1, sofa_teal: 1, plant_pot: 1, clock_wall: 1, table_wood: 1, frame_cat: 1, bed_blue: 1, lamp_table: 1, rug_round: 1, toychest: 1, bench: 1, flowerbed: 1, desk: 1, bookshelf: 1 },
@@ -207,8 +208,8 @@ export function stepNeeds(s: GameState, dtSec: number, mult = 1): void {
   if (n.hunger < 15 || n.thirst < 15) healthRate -= 8
   if (n.hygiene < 15) healthRate -= 5
   if (n.energy < 10) healthRate -= 4
-  if (p.sick) healthRate -= 3
-  if (healthRate === 0 && n.hunger > 40 && n.thirst > 40 && n.hygiene > 40) healthRate = p.sick ? 3 : 5
+  if (healthRate === 0 && n.hunger > 40 && n.thirst > 40 && n.hygiene > 40) healthRate = p.sick ? (asleep ? 30 : 9) : 5
+  else if (healthRate === 0 && p.sick) healthRate = -2
   n.health += healthRate * h
 
   for (const k of NEED_KEYS) n[k] = clamp(n[k])
@@ -217,7 +218,7 @@ export function stepNeeds(s: GameState, dtSec: number, mult = 1): void {
     p.sick = true
     toast('warn', `${p.name} hastalandı. İlaç ver ve dinlendir.`)
     sound('sick')
-  } else if (p.sick && n.health >= 75) {
+  } else if (p.sick && n.health >= 60) {
     p.sick = false
     toast('info', `${p.name} iyileşti.`)
     bus.emit({ type: 'anim', name: 'recovering' })
@@ -305,7 +306,34 @@ export function addCoins(s: GameState, n: number, opts: { earned?: boolean; sile
 }
 
 export function addEp(s: GameState, n: number) {
+  if (!s.epCycle) return
   s.ep += n
+}
+
+export function syncEvent(s: GameState) {
+  const c = clockOf(s.worldMinutes)
+  const ev = activeEvent(c)
+  const key = ev ? `${ev.id}:${c.year}` : ''
+  if (key === s.epCycle) return
+  s.epCycle = key
+  if (key) {
+    s.ep = 0
+    toast('info', `${ev!.name} başladı.`)
+  }
+}
+
+const recentPlays: number[] = []
+
+export function playFatigue(now = Date.now()): number {
+  while (recentPlays.length && now - recentPlays[0] > 10 * 60000) recentPlays.shift()
+  const n = recentPlays.length
+  return n < 3 ? 1 : Math.max(0.4, 1 - (n - 2) * 0.15)
+}
+
+export function canPlayMini(s: GameState): Result {
+  if (s.pet.asleep) return { ok: false, reason: `${s.pet.name} uyuyor.` }
+  if (s.pet.needs.energy < 8) return { ok: false, reason: `${s.pet.name} çok yorgun. Önce dinlendir.` }
+  return { ok: true }
 }
 
 export function addXp(s: GameState, n: number, opts: { silent?: boolean } = {}) {
@@ -397,7 +425,7 @@ export function buy(s: GameState, id: string, qty = 1): Result {
   const cost = it.price * q
   if (s.coins < cost) return { ok: false, reason: 'Coin yetmiyor.' }
   s.coins -= cost
-  grant(s, id, q)
+  grant(s, id, q, { silent: true })
   s.stats.purchases += q
   sound('buy')
   toast('buy', `${it.name} alındı`)
@@ -505,7 +533,12 @@ export function petPet(s: GameState, zone: 'head' | 'body', strength = 1) {
   if (zone === 'head') nudgeTrait(s, 'shy', -0.02)
 }
 
+let lastPetTick = 0
+
 export function countPetTick(s: GameState) {
+  const now = Date.now()
+  if (now - lastPetTick < 350) return
+  lastPetTick = now
   track(s, 'pets')
 }
 
@@ -530,15 +563,16 @@ export function toggleLamp(s: GameState) {
   s.pet.lampOn = !s.pet.lampOn
 }
 
-export function finishBath(s: GameState) {
+export function finishBath(s: GameState, before = 0) {
   const n = s.pet.needs
   n.hygiene = 100
   n.comfort = clamp(n.comfort + 12)
   n.happiness = clamp(n.happiness + 5)
   n.health = clamp(n.health + 2)
   nudgeTrait(s, 'calm', 0.4)
-  addXp(s, 6, { silent: true })
-  addCoins(s, 3, { silent: true })
+  const dirty = before < 60
+  addXp(s, dirty ? 6 : 3, { silent: true })
+  addCoins(s, dirty ? 3 : 1, { silent: true })
   track(s, 'baths')
 }
 
@@ -962,13 +996,16 @@ export interface MiniResult {
   xp: number
   best: number
   record: boolean
+  fatigue: number
 }
 
 export function finishMiniGame(s: GameState, id: string, score: number): MiniResult {
   const meta = MINIGAME_REWARD[id]
   const rec = s.records[id] ?? { best: 0, plays: 0, last: 0, total: 0 }
   const record = score > rec.best
-  const coins = miniReward(id, score)
+  const fatigue = playFatigue()
+  const coins = Math.floor(miniReward(id, score) * fatigue)
+  recentPlays.push(Date.now())
   rec.plays += 1
   rec.last = score
   rec.total += score
@@ -987,7 +1024,7 @@ export function finishMiniGame(s: GameState, id: string, score: number): MiniRes
   addEp(s, 2)
   if (Math.random() < 0.3) grantMaterial(s, ['wood', 'cloth', 'paint', 'thread', 'fruit'][Math.floor(Math.random() * 5)], 1)
   track(s, 'plays')
-  return { coins, xp: meta?.xp ?? 8, best: rec.best, record }
+  return { coins, xp: meta?.xp ?? 8, best: rec.best, record, fatigue }
 }
 
 // ---------- Giriş ve zaman ----------

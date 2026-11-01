@@ -77,7 +77,13 @@ export function floatText(list: { x: number; y: number; t: number; text: string;
   if (list.length > 14) list.shift()
 }
 
-export function drawFloats(c: CanvasRenderingContext2D, list: { x: number; y: number; t: number; text: string; color: string }[], dt: number) {
+const floatClock = new WeakMap<object, number>()
+
+export function drawFloats(c: CanvasRenderingContext2D, list: { x: number; y: number; t: number; text: string; color: string }[], _dt?: number) {
+  const now = performance.now()
+  const prev = floatClock.get(list) ?? now
+  floatClock.set(list, now)
+  const dt = Math.min(0.05, (now - prev) / 1000)
   c.save()
   c.font = 'bold 22px sans-serif'
   c.textAlign = 'center'

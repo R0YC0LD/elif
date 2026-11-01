@@ -95,6 +95,7 @@ export function sanitize(raw: unknown): GameState | null {
 
   s.coins = Math.floor(num(raw.coins, 0, 0, 1e9))
   s.ep = Math.floor(num(raw.ep, 0, 0, 1e9))
+  s.epCycle = str(raw.epCycle, '', 24)
   s.xp = Math.floor(num(raw.xp, 0, 0, 1e9))
   s.level = Math.floor(num(raw.level, 1, 1, 50))
 

@@ -19,6 +19,7 @@ export interface UiState {
   toasts: ToastItem[]
   offline: OfflineReport | null
   levelUp: { level: number; stage: number | null; unlocks: string[] } | null
+  pending: { level: number; stage: number | null; unlocks: string[] } | null
   tutorial: number
   confirm: { title: string; text: string; ok: string; danger?: boolean; run: () => void } | null
   version: number
@@ -31,6 +32,7 @@ export const ui: UiState = {
   toasts: [],
   offline: null,
   levelUp: null,
+  pending: null,
   tutorial: -1,
   confirm: null,
   version: 0,

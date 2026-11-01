@@ -83,7 +83,7 @@ export class StackTower implements CanvasGame {
     const right = Math.min(b.x + b.w, top.x + top.w)
     const overlap = right - left
     const y = this.blockY(this.stack.length)
-    if (overlap <= 0) {
+    if (overlap <= 3) {
       this.chips.push({ x: b.x, y, w: b.w, vy: 0, c: b.c, rot: 0 })
       this.over = true
       this.fall = 1

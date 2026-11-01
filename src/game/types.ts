@@ -247,6 +247,7 @@ export interface GameState {
   pet: PetState
   coins: number
   ep: number
+  epCycle: string
   xp: number
   level: number
   inventory: Record<string, number>

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { GameLoop } from '../engine/loop'
 import { sound } from '../game/events'
-import { finishMiniGame, miniReward, type MiniResult } from '../game/logic'
+import { toast } from '../game/events'
+import { canPlayMini, finishMiniGame, miniReward, type MiniResult } from '../game/logic'
 import { act, useGame } from '../game/store'
 import { Coin, Ico } from '../ui/Icons'
 import { Sheet } from '../ui/Panels'
@@ -91,6 +92,12 @@ export function GamesPanel() {
               className="cell"
               style={{ alignItems: 'flex-start', textAlign: 'left', minHeight: 150 }}
               onClick={() => {
+                const ok = canPlayMini(s)
+                if (!ok.ok) {
+                  toast('warn', ok.reason ?? 'Şimdi olmaz.')
+                  sound('error')
+                  return
+                }
                 sound('click')
                 patchUi({ panel: null, game: g.id })
               }}
@@ -314,6 +321,7 @@ export function GameShell() {
               <h3>{result.record ? 'Yeni rekor' : 'Oyun bitti'}</h3>
               <div style={{ fontSize: '3rem', fontWeight: 900, color: 'var(--gold)', lineHeight: 1 }}>{result.score}</div>
               <p>{result.detail}</p>
+              {result.fatigue < 1 && <p>Peş peşe oynadığın için coin ödülü %{Math.round(result.fatigue * 100)}.</p>}
               <div className="row wrap" style={{ justifyContent: 'center' }}>
                 <span className="pill">
                   <Coin />+{result.coins}
