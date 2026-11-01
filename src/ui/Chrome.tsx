@@ -43,11 +43,15 @@ export function Hud() {
       </button>
       <span className="pill" title="Coin">
         <Coin />
-        {s.coins}
+        <span key={s.coins} className="bump">
+          {s.coins}
+        </span>
       </span>
       <span className="pill" title="Etkinlik puanı">
         <Ep />
-        {s.ep}
+        <span key={s.ep} className="bump">
+          {s.ep}
+        </span>
       </span>
       <button className="iconbtn" onClick={() => openPanel('settings')} aria-label="Ayarlar">
         {Ico.gear}

@@ -91,6 +91,7 @@ export function newGame(name = 'Nova', now = Date.now()): GameState {
   rooms.garden.placed.push(placedItem('bench', 12, 11), placedItem('flowerbed', 2, 13))
   rooms.study.placed.push(placedItem('desk', 2, 10), placedItem('bookshelf', 8, 7))
   rooms.vault.wallpaper = 'wp_navy'
+  rooms.garden.floor = 'fl_grass'
 
   const s: GameState = {
     v: SAVE_VERSION,
@@ -112,7 +113,7 @@ export function newGame(name = 'Nova', now = Date.now()): GameState {
     ep: 0,
     xp: 0,
     level: 1,
-    inventory: { apple: 3, water: 3, bandage: 1, toy_ball: 1, wp_cream: 1, fl_oak: 1, sofa_teal: 1, plant_pot: 1, clock_wall: 1, table_wood: 1, frame_cat: 1, bed_blue: 1, lamp_table: 1, rug_round: 1, toychest: 1, bench: 1, flowerbed: 1, desk: 1, bookshelf: 1 },
+    inventory: { apple: 3, water: 3, bandage: 1, toy_ball: 1, wp_cream: 1, fl_oak: 1, fl_grass: 1, sofa_teal: 1, plant_pot: 1, clock_wall: 1, table_wood: 1, frame_cat: 1, bed_blue: 1, lamp_table: 1, rug_round: 1, toychest: 1, bench: 1, flowerbed: 1, desk: 1, bookshelf: 1 },
     materials: { wood: 2, cloth: 2, thread: 1 },
     rooms,
     unlockedRooms: ['living', 'kitchen', 'bathroom', 'bedroom'],

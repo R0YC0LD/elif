@@ -1489,3 +1489,62 @@ body {
     font-size: 0.85rem;
   }
 }
+
+.bump {
+  display: inline-block;
+  animation: bump 0.35s ease-out;
+}
+
+@keyframes bump {
+  30% {
+    transform: scale(1.35);
+    color: var(--gold);
+  }
+}
+
+.lvl-badge {
+  position: relative;
+}
+
+.lvl-badge::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid rgba(242, 182, 48, 0.55);
+  animation: halo 2.8s ease-out infinite;
+}
+
+@keyframes halo {
+  from {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.bar > i {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 55%);
+}
+
+.btn,
+.nav-btn,
+.tray-item {
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+}
+
+.nav-btn:hover,
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.cell {
+  transition: transform 0.12s ease;
+}
+
+.cell:active {
+  transform: scale(0.97);
+}

@@ -3,6 +3,7 @@ import { GRID, ROOMS, SCENE } from '../game/progression'
 import type { GameState, RoomId } from '../game/types'
 import type { Clock, Weather } from '../game/world'
 import { INK, drawArt, drawPattern, shade } from './itemArt'
+import { afterFloor, roomExtras } from './roomArt'
 
 type C = CanvasRenderingContext2D
 
@@ -249,6 +250,7 @@ export function drawStaticRoom(c: C, room: RoomId, s: GameState, season: string)
       c.restore()
     }
     roomFixtures(c, room, s)
+    roomExtras(c, room)
     if (fw) drawWindowFrame(c, fw, room)
   } else {
     c.save()
@@ -274,6 +276,7 @@ export function drawStaticRoom(c: C, room: RoomId, s: GameState, season: string)
   fg.addColorStop(1, 'rgba(0,0,0,0.12)')
   c.fillStyle = fg
   c.fillRect(0, WALL_H, SCENE.w, SCENE.h - WALL_H)
+  afterFloor(c, room, SCENE.w, WALL_H)
   if (outdoor) {
     c.fillStyle = season === 'winter' ? '#f4f8fa' : season === 'autumn' ? '#b9763a' : '#5da24c'
     c.fillRect(0, WALL_H - 14, SCENE.w, 14)

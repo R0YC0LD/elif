@@ -36,6 +36,8 @@ Derleme `base: './'` ile yapılır, bu yüzden depo adı ne olursa olsun çalı�
 - Dünya: gün ve gece, dört mevsim, beş hava durumu, mevsimlik etkinlikler. Oyun saati gerçek zamanla orantılıdır (1 gerçek saniye = 1 oyun dakikası).
 - İlerleme: XP ve seviye, günlük ve haftalık görevler, 46 başarım, 10 gizli keşif, koleksiyon, üretim tarifleri, keşif bölgeleri.
 - Mini oyunlar: Coin Rush, Memory Master, Reaction Arena, Pet Runner, Stack Tower, Color Match.
+- Ses: her oda ve her mini oyun için ayrı müzik teması (tempo, gam, çalgı, davul ve basla), gece yavaşlar ve kısılır. Yankı ve sıkıştırıcıdan geçen efektler. Mobilde titreşim geri bildirimi.
+- Görsel efekt: pencereden düşen ışık huzmesi, toz, buhar, ateş böceği, ışıltı, halka dalgaları, vinyet, rüzgar değirmeni. Karakter ihtiyaç duyduğunda düşünce balonu çıkarır, dokununca ilgili odaya götürür. Bahçede uçan altın kelebeğe dokunarak coin kazanılır.
 - Çevrimdışı ilerleme en fazla 8 saat hesaplanır, dönüşte özet gösterilir. Karakter kaybolmaz veya ölmez.
 
 ## Kayıt

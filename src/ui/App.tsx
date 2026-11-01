@@ -12,6 +12,26 @@ import { SettingsPanel, applySettings } from './Settings'
 import { closePanel, patchUi, pushToast, useUi } from './uiStore'
 import { patchSceneUi, sceneUi } from '../render/scene'
 
+const BUZZ: Record<string, number | number[]> = {
+  coin: 8,
+  combo: 12,
+  sparkle: 10,
+  place: 12,
+  error: 30,
+  bomb: 40,
+  levelup: [20, 40, 30],
+  achievement: [15, 30, 15],
+  buy: 10,
+  giggle: 8,
+  heal: 14,
+}
+
+function buzz(name: string) {
+  const v = BUZZ[name]
+  if (v === undefined || store.state.settings.reduceMotion || !('vibrate' in navigator)) return
+  navigator.vibrate(v)
+}
+
 function SidePanel() {
   const s = useGame()
   return (
@@ -57,7 +77,10 @@ export default function App() {
 
     const off = bus.on((e) => {
       if (e.type === 'toast') pushToast(e.kind, e.text)
-      else if (e.type === 'sound') audio.play(e.name)
+      else if (e.type === 'sound') {
+        audio.play(e.name)
+        buzz(e.name)
+      }
       else if (e.type === 'levelup') patchUi({ levelUp: { level: e.level, stage: null, unlocks: unlocksAt(e.level) } })
       else if (e.type === 'stage' && ui.levelUp) patchUi({ levelUp: { ...ui.levelUp, stage: e.stage } })
       else if (e.type === 'stage') patchUi({ levelUp: { level: store.state.level, stage: e.stage, unlocks: [] } })
@@ -111,6 +134,9 @@ export default function App() {
   }, [])
 
   const s = useGame()
+  useEffect(() => {
+    if (ready) audio.setTheme(ui.game ?? s.currentRoom)
+  }, [ready, ui.game, s.currentRoom])
   useEffect(() => {
     if (ready) applySettings(s.settings)
   }, [ready, s.settings.fontScale, s.settings.highContrast, s.settings.reduceMotion, s.settings.music, s.settings.sfx, s.settings.musicVol, s.settings.sfxVol, s.settings])

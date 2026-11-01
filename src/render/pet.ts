@@ -834,6 +834,14 @@ export function drawPet(c: C, look: PetLook, p: Pose, drawn: { n: number }) {
   c.save()
   bodyPath(c)
   c.clip()
+  {
+    const sh = c.createRadialGradient(-16, -88, 8, -4, -62, 84)
+    sh.addColorStop(0, 'rgba(255,255,255,0.26)')
+    sh.addColorStop(0.55, 'rgba(255,255,255,0)')
+    sh.addColorStop(1, 'rgba(10,30,40,0.2)')
+    c.fillStyle = sh
+    c.fillRect(-70, -124, 140, 124)
+  }
   if (look.stage >= 3) {
     c.beginPath()
     c.ellipse(0, -30, 34, 24, 0, 0, Math.PI * 2)

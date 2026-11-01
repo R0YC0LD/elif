@@ -29,6 +29,7 @@ import { drawFurniture, type FurnEnv } from './furniture'
 import { drawArt } from './itemArt'
 import { Animator, drawPet, stageScale } from './pet'
 import { Particles } from './particles'
+import { drawWindmill } from './roomArt'
 import { drawLighting, drawOutdoor, drawStaticRoom, moonPos, windowRect, type LightSource } from './rooms'
 
 const CELL = GRID.cell
@@ -122,6 +123,11 @@ export class Scene {
   private unsub: (() => void)[] = []
   private pointerHome = { x: 0, y: 0 }
   private roomSwitch = 0
+  private vign: HTMLCanvasElement | null = null
+  private gift: { x: number; y: number; t: number; vx: number } | null = null
+  private giftIn = 18
+  private bubble: { x: number; y: number; r: number; room: RoomId } | null = null
+  private ambIn = 0
 
   constructor() {
     this.loop = new GameLoop({ update: (dt) => this.update(dt), render: (_a, dt) => this.render(dt) })
@@ -146,6 +152,7 @@ export class Scene {
         } else if (e.type === 'levelup') {
           this.anim.play('levelUp')
           this.burst('star', 22)
+          this.ringBurst(3)
           this.addShake(5)
         } else if (e.type === 'stage') {
           this.flash = 1
@@ -189,7 +196,7 @@ export class Scene {
     if (!this.canvas) return
     const rect = this.canvas.getBoundingClientRect()
     const low = store.state.settings.lowGfx
-    const dpr = low ? 1 : Math.min(window.devicePixelRatio || 1, 2)
+    const dpr = low ? 1 : Math.min(window.devicePixelRatio || 1, 2.5)
     const w = Math.max(160, Math.round(Math.max(rect.width, (rect.height * SCENE.w) / SCENE.h) * dpr))
     const h = Math.round((w * SCENE.h) / SCENE.w)
     if (this.canvas.width !== w || this.canvas.height !== h) {
@@ -198,6 +205,7 @@ export class Scene {
       this.statics.clear()
     }
     this.res = w / SCENE.w
+    this.vign = null
     this.particles.setLimit(low ? 90 : 360)
   }
 
@@ -594,6 +602,7 @@ export class Scene {
     else if (head) this.anim.play(Math.random() < 0.5 ? 'surprised' : 'happy')
     else this.anim.play('petReact')
     this.particles.emit('heart', this.actorX, c.y - 40, 2, { speed: 40, up: 60 })
+    this.particles.emit('ring', this.actorX, c.y, 1, { spread: 0, speed: 0, up: 0, life: 0.5, size: 0.8 })
     sound(head ? 'giggle' : 'poke')
   }
 
@@ -601,6 +610,30 @@ export class Scene {
     const s = store.state
     const room = s.currentRoom
     const clock = clockOf(s.worldMinutes)
+    if (this.gift && Math.hypot(x - this.gift.x, y - this.gift.y) < 40) {
+      const g = this.gift
+      this.gift = null
+      const n = 8 + Math.floor(Math.random() * 10)
+      act((st) => {
+        st.coins += n
+        st.stats.coinsEarned += n
+      })
+      toast('coin', '+' + n + ' coin')
+      this.particles.emit('glow', g.x, g.y, 6, { spread: 20, speed: 60, up: 10, life: 0.9, size: 1.4 })
+      this.particles.emit('ring', g.x, g.y, 2, { spread: 0, speed: 0, up: 0, life: 0.7 })
+      sound('sparkle')
+      return true
+    }
+    if (this.bubble && Math.hypot(x - this.bubble.x, y - this.bubble.y) < this.bubble.r + 8 && !s.pet.asleep) {
+      const target = this.bubble.room
+      if (target !== room && s.unlockedRooms.includes(target)) {
+        act((st) => {
+          st.currentRoom = target
+        })
+        sound('room')
+      } else this.anim.play('surprised')
+      return true
+    }
     if (room === 'garden' && y < 150 && !this.hitPetXY(x, y)) {
       this.cloudTaps++
       this.particles.emit('spark', x, y, 6, { speed: 40, up: 10 })
@@ -972,7 +1005,185 @@ export class Scene {
       if (w === 'snowy') this.particles.emit('snow', Math.random() * SCENE.w, 0, 1, { spread: 0, speed: 8, up: -20, g: 24, life: 6 })
       if (w === 'windy' && Math.random() < 0.05) this.particles.emit('leaf', 0, 100 + Math.random() * 250, 1, { spread: 0, speed: 20, up: 0, g: 10, life: 4 })
     }
-    void clock
+    this.roomAmbient(dt, s.currentRoom, clock.daylight, w)
+  }
+
+  private ringBurst(n: number) {
+    const c = this.petCenter()
+    for (let i = 0; i < n; i++) this.later(i * 0.18, () => this.particles.emit('ring', c.x, c.y, 1, { spread: 0, speed: 0, up: 0, life: 0.9, size: 1.2 }))
+  }
+
+  private roomAmbient(dt: number, room: RoomId, daylight: number, weather: string) {
+    if (store.state.settings.lowGfx) return
+    this.ambIn -= dt
+    const k = store.state.settings.reduceMotion ? 2 : 1
+    if (room === 'garden' && !store.state.pet.asleep) {
+      this.giftIn -= dt
+      if (this.giftIn <= 0 && !this.gift) {
+        this.gift = { x: -30, y: 90 + Math.random() * 150, t: 0, vx: 55 + Math.random() * 30 }
+        this.giftIn = 40 + Math.random() * 40
+      }
+    }
+    if (this.gift) {
+      const g = this.gift
+      g.t += dt
+      g.x += g.vx * dt
+      g.y += Math.sin(g.t * 2.4) * 28 * dt
+      if (g.x > SCENE.w + 40) this.gift = null
+    }
+    if (this.ambIn > 0) return
+    switch (room) {
+      case 'kitchen':
+        this.ambIn = 0.4 * k
+        this.particles.emit('steam', 390 + (Math.random() - 0.5) * 20, 178, 1, { spread: 4, speed: 4, up: 26, life: 1.8 })
+        break
+      case 'bathroom':
+        this.ambIn = 0.7 * k
+        this.particles.emit('bubble', 40 + Math.random() * 190, 240, 1, { spread: 0, speed: 8, up: 30, life: 2.6, size: 0.8 })
+        this.particles.emit('steam', 60 + Math.random() * 160, 236, 1, { spread: 6, speed: 4, up: 18, life: 2.2 })
+        break
+      case 'bedroom':
+        this.ambIn = 0.6 * k
+        if (daylight < 0.5) this.particles.emit('mote', 80 + Math.random() * 560, 20 + Math.random() * 240, 1, { spread: 0, speed: 4, up: 0, life: 4, size: 1.3 })
+        break
+      case 'playroom':
+        this.ambIn = 0.5 * k
+        this.particles.emit('spark', Math.random() * SCENE.w, -6, 1, { spread: 0, speed: 20, up: -40, g: 30, life: 5, size: 0.8 })
+        break
+      case 'garden':
+        this.ambIn = 0.5 * k
+        if (daylight < 0.4) this.particles.emit('firefly', Math.random() * SCENE.w, 200 + Math.random() * 250, 1, { spread: 0, speed: 10, up: 0, life: 7, size: 1.1 })
+        else if (weather === 'sunny') this.particles.emit('mote', Math.random() * SCENE.w, 40 + Math.random() * 260, 1, { spread: 0, speed: 6, up: 0, life: 5, size: 1.1 })
+        break
+      case 'vault':
+        this.ambIn = 0.3 * k
+        this.particles.emit('glow', 60 + Math.random() * 600, 60 + Math.random() * 240, 1, { spread: 0, speed: 3, up: 0, life: 2.4, size: 0.45 })
+        break
+      default:
+        this.ambIn = 0.5 * k
+        if (daylight > 0.3 && weather !== 'rainy') {
+          const w = windowRect(room)
+          if (w) this.particles.emit('mote', w.x + 20 + Math.random() * (w.w - 80) - Math.random() * 90, w.y + w.h + Math.random() * 120, 1, { spread: 0, speed: 3, up: 0, life: 5, size: 1.2 })
+        }
+    }
+  }
+
+  private drawShaft(c: CanvasRenderingContext2D, room: RoomId, daylight: number, weather: string) {
+    const w = windowRect(room)
+    if (!w || daylight < 0.3 || weather === 'rainy' || weather === 'snowy') return
+    const a = 0.2 * daylight * (weather === 'cloudy' ? 0.45 : 1)
+    const lean = 150
+    const g = c.createLinearGradient(w.x, w.y + w.h, w.x - lean, 470)
+    g.addColorStop(0, 'rgba(255,240,190,' + a + ')')
+    g.addColorStop(1, 'rgba(255,240,190,0)')
+    c.save()
+    c.globalCompositeOperation = 'screen'
+    c.fillStyle = g
+    c.beginPath()
+    c.moveTo(w.x + 12, w.y + w.h)
+    c.lineTo(w.x + w.w - 12, w.y + w.h)
+    c.lineTo(w.x + w.w - 12 - lean - 40, 480)
+    c.lineTo(w.x + 12 - lean + 40, 480)
+    c.closePath()
+    c.fill()
+    c.restore()
+  }
+
+  private drawBubble(c: CanvasRenderingContext2D) {
+    const s = store.state
+    this.bubble = null
+    if (s.pet.asleep || sceneUi.bathOn || sceneUi.decorOn || this.lifted) return
+    const n = s.pet.needs
+    const cand: { v: number; id: string; room: RoomId }[] = [
+      { v: s.pet.sick ? 0 : n.health, id: 'bandage', room: 'living' },
+      { v: n.hunger, id: 'apple', room: 'kitchen' },
+      { v: n.thirst, id: 'water', room: 'kitchen' },
+      { v: n.hygiene, id: 'toy_duck', room: 'bathroom' },
+      { v: n.energy, id: 'zzz', room: 'bedroom' },
+      { v: n.fun, id: 'toy_ball', room: 'playroom' },
+      { v: n.social, id: 'heart', room: 'living' },
+    ]
+    cand.sort((a, b) => a.v - b.v)
+    const top = cand[0]
+    if (top.v >= 30) return
+    const pc = this.petCenter()
+    const pulse = 1 + Math.sin(this.time * 4) * 0.05
+    const bx = pc.x + pc.rx * 0.9
+    const by = pc.y - pc.ry - 34 + Math.sin(this.time * 2) * 3
+    const r = 28 * pulse
+    this.bubble = { x: bx, y: by, r, room: top.room }
+    c.save()
+    c.translate(bx, by)
+    c.fillStyle = '#fffaf0'
+    c.strokeStyle = '#0f2123'
+    c.lineWidth = 3
+    c.beginPath()
+    c.arc(-r * 0.7, r * 1.05, 5, 0, 7)
+    c.arc(-r * 0.35, r * 0.78, 8, 0, 7)
+    c.fill()
+    c.stroke()
+    c.beginPath()
+    c.arc(0, 0, r, 0, 7)
+    c.fill()
+    c.stroke()
+    if (top.id === 'zzz') {
+      c.fillStyle = '#5a6fa8'
+      c.font = 'bold 26px sans-serif'
+      c.textAlign = 'center'
+      c.textBaseline = 'middle'
+      c.fillText('Zzz', 0, 2)
+    } else if (top.id === 'heart') drawArt(c, ['fxhearts', '#e0529a'], 40)
+    else drawArt(c, ITEMS[top.id].art, 38)
+    c.restore()
+  }
+
+  private drawGift(c: CanvasRenderingContext2D) {
+    const g = this.gift
+    if (!g) return
+    const flap = Math.sin(g.t * 14)
+    c.save()
+    c.translate(g.x, g.y)
+    c.globalCompositeOperation = 'lighter'
+    const gl = c.createRadialGradient(0, 0, 2, 0, 0, 34)
+    gl.addColorStop(0, 'rgba(255,230,120,0.7)')
+    gl.addColorStop(1, 'rgba(255,230,120,0)')
+    c.fillStyle = gl
+    c.fillRect(-34, -34, 68, 68)
+    c.globalCompositeOperation = 'source-over'
+    c.fillStyle = '#f2b630'
+    c.strokeStyle = '#0f2123'
+    c.lineWidth = 2.4
+    for (const sg of [-1, 1]) {
+      c.save()
+      c.scale(sg, 1)
+      c.rotate(-0.4 - flap * 0.5)
+      c.beginPath()
+      c.ellipse(11, -4, 12, 7, 0, 0, 7)
+      c.fill()
+      c.stroke()
+      c.restore()
+    }
+    c.fillStyle = '#6a4a30'
+    c.beginPath()
+    c.ellipse(0, 0, 3, 8, 0, 0, 7)
+    c.fill()
+    c.restore()
+  }
+
+  private vignette(): HTMLCanvasElement {
+    if (!this.vign) {
+      const cv = document.createElement('canvas')
+      cv.width = Math.round(SCENE.w * this.res)
+      cv.height = Math.round(SCENE.h * this.res)
+      const c = cv.getContext('2d')!
+      const g = c.createRadialGradient(cv.width / 2, cv.height * 0.55, cv.height * 0.35, cv.width / 2, cv.height / 2, cv.width * 0.72)
+      g.addColorStop(0, 'rgba(10,18,30,0)')
+      g.addColorStop(1, 'rgba(10,18,30,0.38)')
+      c.fillStyle = g
+      c.fillRect(0, 0, cv.width, cv.height)
+      this.vign = cv
+    }
+    return this.vign
   }
 
   private updateBath(dt: number) {
@@ -1036,7 +1247,10 @@ export class Scene {
     const outdoor = room === 'garden'
     const win = windowRect(room)
     const view = { clock, weather, t, px }
-    if (outdoor) drawOutdoor(c, { x: 0, y: 0, w: SCENE.w, h: GRID.wallRows * CELL }, view, clock.season, low)
+    if (outdoor) {
+      drawOutdoor(c, { x: 0, y: 0, w: SCENE.w, h: GRID.wallRows * CELL }, view, clock.season, low)
+      drawWindmill(c, 590, 250, t, clock.daylight)
+    }
     else if (win) drawOutdoor(c, { x: win.x + 9, y: win.y + 9, w: win.w - 18, h: win.h - 18 }, view, clock.season, low)
     else {
       c.fillStyle = '#1b2428'
@@ -1045,6 +1259,7 @@ export class Scene {
 
     c.drawImage(this.staticFor(room), 0, 0, SCENE.w, SCENE.h)
     drawn++
+    if (!low && !outdoor) this.drawShaft(c, room, clock.daylight, weather)
 
     // eşyalar
     const placed = s.rooms[room].placed
@@ -1130,13 +1345,17 @@ export class Scene {
     }
     if (sceneUi.bathOn) this.drawBathProps(c)
 
+    this.drawBubble(c)
     this.particles.draw(c)
+    this.drawGift(c)
     drawn += this.particles.active
 
     // ışıklandırma
     const extraDark = s.pet.asleep && !s.pet.lampOn ? 0.33 : 0
     for (const sp of this.activeLights(room)) lights.push(sp)
     drawLighting(c, clock, outdoor, extraDark, lights, weather)
+
+    if (!low) c.drawImage(this.vignette(), 0, 0, SCENE.w, SCENE.h)
 
     // dekor katmanı
     if (sceneUi.decorOn) this.drawDecorOverlay(c)
@@ -1162,6 +1381,10 @@ export class Scene {
     const w = windowRect(room)
     if (w && clock.daylight > 0.1 && clock.daylight < 0.95 && !s.pet.asleep) {
       out.push({ x: w.x + w.w / 2, y: w.y + w.h / 2, r: 200, color: 'rgba(255,225,160,A)', a: 0.12 })
+    }
+    if (clock.daylight < 0.65) {
+      if (room === 'living') out.push({ x: 300, y: 118, r: 170, color: 'rgba(255,210,130,A)', a: 0.5 }, { x: 60, y: 125, r: 110, color: 'rgba(255,210,130,A)', a: 0.4 }, { x: 690, y: 125, r: 110, color: 'rgba(255,210,130,A)', a: 0.4 })
+      if (room === 'study') out.push({ x: 40, y: 40, r: 140, color: 'rgba(255,210,130,A)', a: 0.45 })
     }
     if (s.pet.asleep && s.pet.lampOn && room === 'bedroom') out.push({ x: 360, y: 300, r: 220, color: 'rgba(255,200,120,A)', a: 0.22 })
     return out

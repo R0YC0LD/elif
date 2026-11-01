@@ -1,6 +1,6 @@
 import { INK } from './itemArt'
 
-export type ParticleKind = 'heart' | 'star' | 'coin' | 'drop' | 'bubble' | 'note' | 'zzz' | 'leaf' | 'snow' | 'crumb' | 'foam' | 'spark' | 'rain'
+export type ParticleKind = 'heart' | 'star' | 'coin' | 'drop' | 'bubble' | 'note' | 'zzz' | 'leaf' | 'snow' | 'crumb' | 'foam' | 'spark' | 'rain' | 'ring' | 'glow' | 'mote' | 'steam' | 'firefly'
 
 interface P {
   on: boolean
@@ -32,6 +32,11 @@ const COLORS: Record<ParticleKind, string[]> = {
   foam: ['#ffffff', '#f2fbff'],
   spark: ['#fff1b8', '#ffffff'],
   rain: ['#9ac8e6'],
+  ring: ['#fff1b8', '#ffffff', '#bfe6f5'],
+  glow: ['#ffe9a0', '#fff6d0', '#ffd0a0'],
+  mote: ['#fff6d8', '#ffe8b0'],
+  steam: ['#ffffff'],
+  firefly: ['#f6f08a', '#d8ff9a'],
 }
 
 export class Particles {
@@ -72,7 +77,7 @@ export class Particles {
       p.y = y + (Math.random() - 0.5) * spread * 0.5
       p.vx = Math.cos(a) * sp * Math.random()
       p.vy = Math.sin(a) * sp * Math.random() - (opts.up ?? 30)
-      p.g = opts.g ?? (kind === 'heart' || kind === 'zzz' || kind === 'bubble' || kind === 'note' ? -20 : kind === 'snow' || kind === 'leaf' ? 14 : 160)
+      p.g = opts.g ?? (kind === 'heart' || kind === 'zzz' || kind === 'bubble' || kind === 'note' || kind === 'steam' ? -20 : kind === 'ring' || kind === 'mote' || kind === 'firefly' || kind === 'glow' ? 0 : kind === 'snow' || kind === 'leaf' ? 14 : 160)
       p.life = 0
       p.max = (opts.life ?? 1.1) * (0.7 + Math.random() * 0.6)
       p.size = (opts.size ?? 1) * (0.7 + Math.random() * 0.6)
@@ -96,6 +101,12 @@ export class Particles {
       p.x += p.vx * dt
       p.y += p.vy * dt
       p.rot += p.vr * dt
+      if (p.kind === 'firefly' || p.kind === 'mote') {
+        p.vx += Math.sin(p.life * 2 + p.rot) * 20 * dt
+        p.vy += Math.cos(p.life * 1.7 + p.rot) * 20 * dt
+        p.vx *= 0.98
+        p.vy *= 0.98
+      }
       if (p.kind === 'leaf' || p.kind === 'snow') p.x += Math.sin(p.life * 3 + p.rot) * 10 * dt
     }
   }
@@ -200,6 +211,49 @@ export class Particles {
           c.beginPath()
           c.arc(0, 0, 2.6 * s, 0, 7)
           c.fillStyle = '#fff'
+          c.fill()
+          break
+        case 'ring': {
+          const r = 6 + k * 70 * s
+          c.beginPath()
+          c.arc(0, 0, r, 0, 7)
+          c.lineWidth = 5 * (1 - k) + 1
+          c.strokeStyle = p.color
+          c.stroke()
+          break
+        }
+        case 'glow': {
+          c.globalCompositeOperation = 'lighter'
+          const r = 14 * s * (1 + k)
+          const g = c.createRadialGradient(0, 0, 0, 0, 0, r)
+          g.addColorStop(0, p.color)
+          g.addColorStop(1, 'rgba(255,230,160,0)')
+          c.fillStyle = g
+          c.fillRect(-r, -r, r * 2, r * 2)
+          break
+        }
+        case 'mote':
+          c.globalAlpha *= 0.5 + 0.5 * Math.sin(p.life * 3 + p.rot)
+          c.beginPath()
+          c.arc(0, 0, 1.6 * s, 0, 7)
+          c.fillStyle = p.color
+          c.fill()
+          break
+        case 'firefly': {
+          c.globalCompositeOperation = 'lighter'
+          const tw = 0.5 + 0.5 * Math.sin(p.life * 5 + p.rot)
+          const r = 9 * s * (0.6 + tw * 0.6)
+          const g = c.createRadialGradient(0, 0, 0, 0, 0, r)
+          g.addColorStop(0, p.color)
+          g.addColorStop(1, 'rgba(240,255,150,0)')
+          c.fillStyle = g
+          c.fillRect(-r, -r, r * 2, r * 2)
+          break
+        }
+        case 'steam':
+          c.beginPath()
+          c.arc(0, 0, (7 + k * 14) * s, 0, 7)
+          c.fillStyle = 'rgba(255,255,255,0.22)'
           c.fill()
           break
         case 'crumb':
