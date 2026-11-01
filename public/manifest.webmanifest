@@ -1,0 +1,15 @@
+{
+  "name": "Project Nova",
+  "short_name": "Nova",
+  "description": "Sanal evcil varlık, ev düzenleme ve mini oyunlar.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1f3a3d",
+  "theme_color": "#1f3a3d",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
