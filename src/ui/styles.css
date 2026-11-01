@@ -1105,7 +1105,7 @@ input[type='range'] {
 
 .game-frame {
   position: relative;
-  width: min(100%, calc((100dvh - 130px) * 0.75));
+  width: min(100%, calc((100dvh - var(--game-chrome, 130px)) * 0.75));
   aspect-ratio: 3 / 4;
   max-height: 100%;
   border-radius: var(--r-md);
@@ -1116,7 +1116,7 @@ input[type='range'] {
 }
 
 .game-frame.landscape {
-  width: min(100%, calc((100dvh - 130px) * 1.3333));
+  width: min(100%, calc((100dvh - var(--game-chrome, 130px)) * 1.3333));
   aspect-ratio: 4 / 3;
 }
 
@@ -1342,7 +1342,7 @@ input[type='range'] {
 
 @media (orientation: landscape) and (max-height: 520px) {
   :root {
-    --chrome: 150px;
+    --chrome: 112px;
   }
   .app {
     grid-template-rows: auto minmax(0, 1fr);
@@ -1357,7 +1357,7 @@ input[type='range'] {
     grid-template-columns: minmax(0, 1fr);
   }
   .needs-strip {
-    display: none;
+    display: grid;
   }
   .dock {
     grid-column: 2;
@@ -1444,5 +1444,48 @@ input[type='range'] {
 @media (orientation: landscape) and (max-height: 520px) {
   .app {
     grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+
+body {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+.app {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.tab {
+  min-height: 40px;
+}
+
+.btn.small {
+  min-height: 40px;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --game-chrome: 64px;
+  }
+  .room-title .more {
+    display: none;
+  }
+  .hud {
+    min-height: 54px;
+  }
+  .lvl-sub {
+    display: none;
+  }
+  .sheet {
+    max-height: 96dvh;
+    min-height: 0;
+  }
+  .stage-wrap {
+    padding: 4px;
+  }
+  .game-hud span {
+    font-size: 0.85rem;
   }
 }
